@@ -35,11 +35,18 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
+
+# Render (and other hosts) should provide DATABASE_URL for the hosted database.
+# Support common MySQL URLs by selecting the PyMySQL SQLAlchemy driver.
+database_url = os.getenv(
+    "DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "campusconnect.db")
+).strip()
+if database_url.startswith("mysql://"):
+    database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
+
 app.config.update(
     SECRET_KEY=os.getenv("SECRET_KEY", "campusconnect-development-secret-key-2026"),
-    SQLALCHEMY_DATABASE_URI=os.getenv(
-        "DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "campusconnect.db")
-    ),
+    SQLALCHEMY_DATABASE_URI=database_url,
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     UPLOAD_FOLDER=UPLOAD_FOLDER,
     MAX_CONTENT_LENGTH=int(os.getenv("MAX_CONTENT_LENGTH", 12 * 1024 * 1024)),
@@ -1561,7 +1568,10 @@ def init_db():
             db.session.commit()
 
 
+# Gunicorn imports this module rather than executing it as __main__.
+# Initialise tables and seed the configured administrator on every app startup.
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     debug_mode = os.getenv("FLASK_DEBUG", "1") == "1"
-    app.run(host="127.0.0.1", port=5000, debug=debug_mode)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=debug_mode)
