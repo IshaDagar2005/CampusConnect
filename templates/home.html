@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-section">
+  <div>
+    <span class="section-label">Academic Progress and Communication Portal</span>
+    <h1 class="hero-title">A single workspace for <span>academic progress</span> and coordination.</h1>
+    <p class="hero-subtitle">
+      CampusConnect centralises coursework, practical file submissions, project milestones,
+      deadlines, and departmental notices into a role-based academic portal.
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Sign In to Portal</a>
+      <a class="btn btn-secondary" href="{{ url_for('register') }}">Student Registration</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Portal Capabilities</h3>
+      <span class="badge badge-published">Active System</span>
+    </div>
+    <div class="details-box">
+      <strong>Coursework &amp; Submissions</strong>
+      <p class="text-sm text-muted">Assignments, projects, and practical tasks managed with deadline validation.</p>
+    </div>
+    <div class="details-box">
+      <strong>Automated Telegram Alerts</strong>
+      <p class="text-sm text-muted">Opt-in notifications for new tasks, deadlines, and circulars.</p>
+    </div>
+    <div class="details-box">
+      <strong>Progress Dashboards</strong>
+      <p class="text-sm text-muted">Course-wise visibility into pending, submitted, reviewed, and overdue work.</p>
+    </div>
+  </div>
+</section>
+
+<section class="features-grid">
+  <div class="feature-card">
+    <span class="section-label">Task Management</span>
+    <h3>Course-wise Coordination</h3>
+    <p>
+      Faculty members publish assignments, project deliverables, and lab practicals with specific
+      instructions, issue dates, and hard submission deadlines.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <span class="section-label">Monitoring</span>
+    <h3>Progress Dashboards</h3>
+    <p>
+      Centralised tracking replaces scattered communication. Monitor submitted, reviewed, pending,
+      and overdue work across enrolled subjects.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <span class="section-label">Notifications</span>
+    <h3>Telegram Bot Integration</h3>
+    <p>
+      Securely link your Telegram account using single-use tokens to receive instant alerts when tasks
+      are published or deadlines approach.
+    </p>
+  </div>
+</section>
+{% endblock %}

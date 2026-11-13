@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Student Registration - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <span class="section-label">Student Enrollment</span>
+  <h1>Create Student Account</h1>
+  <p class="text-muted text-sm">Register to access your enrolled courses, tasks, and deadlines.</p>
+
+  <form method="post" action="{{ url_for('register') }}">
+    <div class="form-group">
+      <label class="form-label" for="full_name">Full Name</label>
+      <input class="form-control" type="text" id="full_name" name="full_name" required placeholder="Full Name">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="email">Institutional Email</label>
+      <input class="form-control" type="email" id="email" name="email" required placeholder="student@vips.edu">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="department">Department / Programme</label>
+      <input class="form-control" type="text" id="department" name="department" placeholder="Master of Computer Applications">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Password (Minimum 8 characters)</label>
+      <input class="form-control" type="password" id="password" name="password" minlength="8" required placeholder="Choose a secure password">
+      <div class="form-help">Must contain at least 8 characters.</div>
+    </div>
+
+    <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 10px;">Create Account</button>
+  </form>
+
+  <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-border); text-align: center;">
+    <p class="text-sm text-muted">Already registered? <a href="{{ url_for('login') }}">Sign in here</a></p>
+  </div>
+</div>
+{% endblock %}

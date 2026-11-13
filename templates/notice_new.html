@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Post Notice - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="form-card wide">
+  <span class="section-label">Departmental Communication</span>
+  <h1>Post Academic Notice</h1>
+  <p class="text-muted text-sm">Publish announcements, lab schedule changes, or exam circulars.</p>
+
+  <form method="post" action="{{ url_for('notice_new') }}">
+    <div class="form-group">
+      <label class="form-label" for="title">Notice Title</label>
+      <input class="form-control" type="text" id="title" name="title" required placeholder="e.g. Schedule Revision for Mid-Semester Presentations">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="audience">Target Audience (Course-Targeted or Department-Wide)</label>
+      <select class="form-select" id="audience" name="audience">
+        <option value="all">All Students (Department-wide)</option>
+        {% for c in courses %}
+          <option value="{{ c.course_id }}">{{ c.course_code }} - {{ c.course_name }} (Section {{ c.section or 'Default' }})</option>
+        {% endfor %}
+      </select>
+      <div class="form-help">Students enrolled in the targeted course will receive Telegram alerts if their accounts are linked.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="body">Notice Content</label>
+      <textarea class="form-textarea" id="body" name="body" rows="6" required placeholder="Type the full announcement message here..."></textarea>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-top: 24px;">
+      <button class="btn btn-primary" type="submit">Publish Notice</button>
+      <a class="btn btn-outline" href="{{ url_for('notices_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

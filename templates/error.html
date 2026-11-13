@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ code or '' }} - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="form-card" style="text-align: center;">
+  <span class="section-label">CampusConnect System</span>
+  <h1 style="font-size: 48px; margin-bottom: 8px;">{{ code or 'Notice' }}</h1>
+  <p class="text-muted" style="margin-bottom: 24px;">{{ message }}</p>
+  <div>
+    <a class="btn btn-primary" href="{{ url_for('home') }}">Return to Safety</a>
+  </div>
+</div>
+{% endblock %}

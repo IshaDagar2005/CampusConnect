@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Create Academic Task - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="form-card wide">
+  <span class="section-label">Faculty Workspace</span>
+  <h1>Create Academic Task</h1>
+  <p class="text-muted text-sm">Publish assignments, projects, or practical lab tasks for your enrolled students.</p>
+
+  {% if courses %}
+    <form method="post" action="{{ url_for('task_new') }}">
+      <div class="form-group">
+        <label class="form-label" for="course_id">Course &amp; Section</label>
+        <select class="form-select" id="course_id" name="course_id" required>
+          {% for c in courses %}
+            <option value="{{ c.course_id }}">{{ c.course_code }} - {{ c.course_name }} (Sec: {{ c.section or 'Default' }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="title">Task Title</label>
+        <input class="form-control" type="text" id="title" name="title" required placeholder="e.g. Lab Exercise 3: Binary Search Tree Implementation">
+      </div>
+
+      <div class="grid-2col" style="grid-template-columns: 1fr 1fr; margin-bottom: 0;">
+        <div class="form-group">
+          <label class="form-label" for="task_type">Task Classification</label>
+          <select class="form-select" id="task_type" name="task_type">
+            <option value="Assignment">Assignment</option>
+            <option value="Project">Project Milestone</option>
+            <option value="Practical">Lab Practical Task</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="status">Publication Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="Published" selected>Published (Visible immediately)</option>
+            <option value="Draft">Draft (Save without publishing)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="deadline">Submission Deadline</label>
+        <input class="form-control" type="datetime-local" id="deadline" name="deadline" required>
+        <div class="form-help">Specify the exact cutoff date and time for student file uploads.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="description">Instructions and Requirements</label>
+        <textarea class="form-textarea" id="description" name="description" rows="6" required placeholder="Provide detailed submission requirements, format specifications, grading rubrics, or references..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 24px;">
+        <button class="btn btn-primary" type="submit">Publish Task</button>
+        <a class="btn btn-outline" href="{{ url_for('dashboard') }}">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <div class="details-box" style="margin-top: 20px;">
+      <strong>No courses assigned</strong>
+      <p class="text-sm text-muted">You do not have any courses assigned to your account. Please ask the administrator to assign a course to you before creating tasks.</p>
+      <div style="margin-top: 14px;">
+        <a class="btn btn-outline btn-sm" href="{{ url_for('dashboard') }}">Return to Dashboard</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

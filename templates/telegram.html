@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Telegram Notifications - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="section-label">Messaging Integration</span>
+    <h1>Telegram Bot Notifications</h1>
+    <p class="text-muted text-sm">Receive instant alerts for published tasks, approaching deadlines, and departmental notices (Section IX-D).</p>
+  </div>
+</div>
+
+<div class="form-card wide">
+  {% if link and link.is_active %}
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <span class="section-label">Account Status</span>
+      <span class="badge badge-published">Connected</span>
+    </div>
+
+    <div class="details-box">
+      <strong>Telegram Account Linked</strong>
+      <p class="text-sm text-muted" style="margin: 4px 0 0;">
+        Your CampusConnect account is connected to Telegram Chat ID: <code>{{ link.chat_id }}</code>.
+        <br>Linked since {{ link.linked_at.strftime('%d %b %Y, %I:%M %p') }}.
+      </p>
+    </div>
+
+    <p class="text-muted text-sm">
+      You will receive direct notifications for new coursework, faculty reviews, deadline reminders, and academic notices.
+    </p>
+
+    <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+      <form method="post" action="{{ url_for('telegram_test') }}">
+        <button class="btn btn-primary" type="submit">Send Test Notification</button>
+      </form>
+      <form method="post" action="{{ url_for('telegram_unlink') }}" data-confirm="Are you sure you want to unlink your Telegram account? You will stop receiving alerts.">
+        <button class="btn btn-outline" type="submit">Unlink Account</button>
+      </form>
+    </div>
+
+  {% else %}
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <span class="section-label">Account Status</span>
+      <span class="badge badge-draft">Not Connected</span>
+    </div>
+
+    <h3>How to Connect Your Telegram Account</h3>
+    <p class="text-muted text-sm">Follow these 3 steps to set up secure, opt-in notification delivery:</p>
+
+    <div class="details-box" style="margin: 20px 0;">
+      <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
+        <li>
+          Open Telegram and search for the bot:
+          {% if bot_username %}
+            <a href="https://t.me/{{ bot_username }}" target="_blank" rel="noopener"><strong>@{{ bot_username }}</strong></a>
+          {% else %}
+            <strong>@CampusConnectBot</strong>
+          {% endif %}
+          and tap <strong>Start</strong>.
+        </li>
+        <li>
+          Click the button below to generate a single-use verification code (valid for 10 minutes).
+        </li>
+        <li>
+          Send the generated command to the bot in Telegram.
+        </li>
+      </ol>
+    </div>
+
+    <form method="post" action="{{ url_for('telegram_code') }}">
+      <button class="btn btn-primary" type="submit">Generate Verification Code</button>
+    </form>
+
+    {% if code %}
+      <div style="margin-top: 24px;">
+        <span class="section-label">Step 3: Send This Command to Bot</span>
+        <div class="code-block" style="margin-top: 8px;">
+          /link {{ code.code }}
+        </div>
+        <div class="form-help" style="margin-top: 6px;">
+          Code expires at {{ code.expires_at.strftime('%I:%M %p UTC') }} (single-use token).
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--color-border);">
+      <p class="text-sm text-muted">
+        <strong>Privacy Notice:</strong> Telegram notifications are sent strictly as direct private messages to your authenticated chat.
+        Academic records are never posted to public groups or unverified channels (Section VIII-E, SEC8).
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

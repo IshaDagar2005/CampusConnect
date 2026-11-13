@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }} - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="section-label">{{ task.course.course_code }} &middot; {{ task.task_type }}</span>
+    <h1>{{ task.title }}</h1>
+    <p class="text-muted text-sm">
+      Course: {{ task.course.course_name }} (Section {{ task.course.section or 'Default' }}) &middot;
+      Issued: {{ task.issue_date.strftime('%d %b %Y') }}
+    </p>
+  </div>
+  <div class="page-header-actions">
+    <a class="btn btn-outline" href="{{ url_for('tasks_list') }}">Back to Tasks</a>
+    {% if current_user.role in ['faculty', 'admin'] and (current_user.role == 'admin' or task.course.faculty_id == current_user.user_id) %}
+      <a class="btn btn-secondary" href="{{ url_for('task_edit', task_id=task.task_id) }}">Edit Task</a>
+      <form method="post" action="{{ url_for('task_delete', task_id=task.task_id) }}" style="display: inline;" data-confirm="Are you sure you want to delete this task? All student submissions will also be deleted.">
+        <button class="btn btn-danger-outline" type="submit">Delete Task</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header">
+    <h3>Task Instructions</h3>
+    <div class="text-sm">
+      <strong>Deadline:</strong>
+      <span class="badge {% if current_time > task.deadline %}badge-overdue{% else %}badge-published{% endif %}">
+        {{ task.deadline.strftime('%d %b %Y, %I:%M %p') }}
+      </span>
+    </div>
+  </div>
+  <div style="white-space: pre-wrap; line-height: 1.7; color: var(--color-ink);">{{ task.description }}</div>
+</div>
+
+{% if current_user.role == 'student' %}
+  <!-- STUDENT SUBMISSION SECTION -->
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Your Submission</h3>
+      <div>
+        {% if computed_status == 'Submitted' %}
+          <span class="badge badge-submitted">Submitted</span>
+        {% elif computed_status == 'Reviewed' %}
+          <span class="badge badge-reviewed">Reviewed</span>
+        {% elif computed_status == 'Resubmission Required' %}
+          <span class="badge badge-resubmit">Resubmission Required</span>
+        {% elif computed_status == 'Overdue' %}
+          <span class="badge badge-overdue">Overdue</span>
+        {% else %}
+          <span class="badge badge-pending">Pending</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if submission %}
+      <div class="details-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <strong>Submitted File:</strong> {{ submission.file_path.split('_', 3)[-1] }}
+            <div class="text-sm text-muted">Uploaded on {{ submission.submitted_at.strftime('%d %b %Y at %I:%M %p') }}</div>
+          </div>
+          <div>
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('submission_file', submission_id=submission.submission_id) }}">Download Submitted File</a>
+          </div>
+        </div>
+
+        {% if submission.feedback %}
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-border);">
+            <strong style="color: var(--color-primary);">Faculty Feedback:</strong>
+            <p style="margin: 4px 0 0; color: var(--color-ink);">{{ submission.feedback }}</p>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if task.status == 'Closed' %}
+      <div class="flash info" style="margin-top: 16px;">
+        This task is closed. New submissions are no longer accepted.
+      </div>
+    {% else %}
+      <h4 style="margin-top: 20px;">{% if submission %}Replace / Update Submission{% else %}Upload Work{% endif %}</h4>
+      <p class="text-muted text-sm">Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, ZIP, TXT, PNG, JPG (Maximum size: 12 MB).</p>
+
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('submit_task', task_id=task.task_id) }}">
+        <div class="form-group">
+          <input class="form-control" type="file" name="file" required data-max-size="12582912">
+        </div>
+        <button class="btn btn-primary" type="submit">
+          {% if submission %}Upload Revised File{% else %}Submit Academic Work{% endif %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+{% else %}
+  <!-- FACULTY / ADMIN SUBMISSIONS ROSTER -->
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Student Submissions ({{ submissions_count }} / {{ enrolled_count }} Submitted)</h3>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Submission Status</th>
+            <th>Uploaded At</th>
+            <th>File</th>
+            <th>Review &amp; Feedback</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in roster %}
+            <tr>
+              <td>
+                <strong>{{ item.student.full_name }}</strong>
+                <div class="text-sm text-muted">{{ item.student.email }}</div>
+              </td>
+              <td>
+                {% if item.status == 'Submitted' %}
+                  <span class="badge badge-submitted">Submitted</span>
+                {% elif item.status == 'Reviewed' %}
+                  <span class="badge badge-reviewed">Reviewed</span>
+                {% elif item.status == 'Resubmission Required' %}
+                  <span class="badge badge-resubmit">Resubmit Req.</span>
+                {% elif item.status == 'Overdue' %}
+                  <span class="badge badge-overdue">Overdue</span>
+                {% else %}
+                  <span class="badge badge-pending">Pending</span>
+                {% endif %}
+              </td>
+              <td class="nowrap">
+                {% if item.submission %}
+                  {{ item.submission.submitted_at.strftime('%d %b %Y, %I:%M %p') }}
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td class="nowrap">
+                {% if item.submission %}
+                  <a class="btn btn-outline btn-sm" href="{{ url_for('submission_file', submission_id=item.submission.submission_id) }}">Download</a>
+                {% else %}
+                  <span class="text-muted">No file</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.submission %}
+                  <form method="post" action="{{ url_for('review_submission', submission_id=item.submission.submission_id) }}" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <select class="form-select" name="status" style="width: auto; padding: 4px 8px; font-size: 12px;">
+                      <option value="Reviewed" {% if item.submission.status == 'Reviewed' %}selected{% endif %}>Reviewed</option>
+                      <option value="Resubmission Required" {% if item.submission.status == 'Resubmission Required' %}selected{% endif %}>Resubmission Required</option>
+                    </select>
+                    <input class="form-control" type="text" name="feedback" value="{{ item.submission.feedback }}" placeholder="Feedback / comments..." style="width: 200px; padding: 4px 8px; font-size: 12px;">
+                    <button class="btn btn-secondary btn-sm" type="submit">Save</button>
+                  </form>
+                {% else %}
+                  <span class="text-muted text-sm">Awaiting submission</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" class="text-muted">No students are currently enrolled in this course.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

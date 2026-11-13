@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Progress Analytics - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="section-label">Monitoring &amp; Analytics</span>
+    <h1>Academic Progress Dashboard</h1>
+    <p class="text-muted text-sm">Course-wise progress tracking and student submission completion rates (Table VIII).</p>
+  </div>
+  <div class="page-header-actions">
+    <a class="btn btn-outline" href="{{ url_for('dashboard') }}">Return to Dashboard</a>
+  </div>
+</div>
+
+<!-- Course-wise Progress Summary Table -->
+<div class="panel">
+  <div class="panel-header">
+    <h3>Course-wise Progress Summary</h3>
+    <span class="text-sm text-muted">Click any course to inspect individual student records</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Course</th>
+          <th>Section</th>
+          <th>Enrolled</th>
+          <th>Tasks</th>
+          <th>Total Expected</th>
+          <th>Submitted</th>
+          <th>Pending</th>
+          <th>Overdue</th>
+          <th>Reviewed</th>
+          <th>Submission Rate</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cs in course_stats %}
+          <tr {% if selected_course and selected_course.course_id == cs.course.course_id %}style="background-color: var(--color-primary-light);"{% endif %}>
+            <td>
+              <strong>{{ cs.course.course_code }}</strong>
+              <div class="text-sm text-muted">{{ cs.course.course_name }}</div>
+            </td>
+            <td>{{ cs.course.section or '-' }}</td>
+            <td>{{ cs.enrolled_count }}</td>
+            <td>{{ cs.tasks_count }}</td>
+            <td>{{ cs.total_reqs }}</td>
+            <td><strong>{{ cs.submitted }}</strong></td>
+            <td>{{ cs.pending }}</td>
+            <td>
+              {% if cs.overdue > 0 %}
+                <span class="badge badge-overdue">{{ cs.overdue }}</span>
+              {% else %}
+                0
+              {% endif %}
+            </td>
+            <td>{{ cs.reviewed }}</td>
+            <td>
+              <div class="progress-container">
+                <div class="progress-bar-bg" style="width: 70px;">
+                  <div class="progress-bar-fill" style="width: {{ cs.rate }}%;"></div>
+                </div>
+                <span>{{ cs.rate }}%</span>
+              </div>
+            </td>
+            <td class="nowrap">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('progress', course_id=cs.course.course_id) }}">
+                Inspect Students
+              </a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="11" class="text-muted">No courses found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Student-by-Student Drill Down Matrix -->
+{% if selected_course %}
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>Student Roster: {{ selected_course.course_code }} - {{ selected_course.course_name }}</h3>
+        <p class="text-muted text-sm" style="margin: 4px 0 0;">Individual student performance matrix across all tasks in this course.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('progress') }}">Close Drill-Down</a>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Email</th>
+            <th>Submitted</th>
+            <th>Reviewed</th>
+            <th>Pending</th>
+            <th>Overdue</th>
+            <th>Completion Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in student_matrix %}
+            <tr>
+              <td><strong>{{ row.student.full_name }}</strong></td>
+              <td>{{ row.student.email }}</td>
+              <td><strong>{{ row.submitted }}</strong></td>
+              <td>{{ row.reviewed }}</td>
+              <td>{{ row.pending }}</td>
+              <td>
+                {% if row.overdue > 0 %}
+                  <span class="badge badge-overdue">{{ row.overdue }} Overdue</span>
+                {% else %}
+                  <span class="badge badge-published">On Track</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="progress-container">
+                  <div class="progress-bar-bg" style="width: 80px;">
+                    <div class="progress-bar-fill" style="width: {{ row.rate }}%;"></div>
+                  </div>
+                  <span>{{ row.rate }}%</span>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-muted">No students are currently enrolled in this course.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

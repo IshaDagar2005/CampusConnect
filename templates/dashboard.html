@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CampusConnect{% endblock %}
+
+{% block content %}
+{% if role == 'admin' %}
+  <!-- ADMINISTRATOR DASHBOARD -->
+  <div class="page-header">
+    <div>
+      <span class="section-label">System Administrator</span>
+      <h1>Portal Administration</h1>
+      <p class="text-muted text-sm">Welcome, {{ current_user.full_name }} &middot; {{ current_user.department or 'Academic Administration' }}</p>
+    </div>
+    <div class="page-header-actions">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_users') }}">Manage Users</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_courses') }}">Manage Courses</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_enrolments') }}">Manage Enrolments</a>
+      <a class="btn btn-outline btn-sm" href="{{ url_for('telegram_page') }}">Telegram Settings</a>
+    </div>
+  </div>
+
+  <!-- System Summary Stats -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Total Users</span>
+      <span class="stat-value">{{ users }}</span>
+      <span class="stat-desc">Faculty, students, and administrators</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Active Courses</span>
+      <span class="stat-value">{{ courses }}</span>
+      <span class="stat-desc">Curriculum subjects mapped</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Total Tasks</span>
+      <span class="stat-value">{{ tasks }}</span>
+      <span class="stat-desc">Assignments, projects, practicals</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Submissions</span>
+      <span class="stat-value">{{ subs }}</span>
+      <span class="stat-desc">Student file uploads recorded</span>
+    </div>
+  </section>
+
+  <!-- Administrative Workflow Quick Setup Panel (Synopsis Section IV-A, VI-B) -->
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Administrative Setup Workflow</h3>
+      <span class="badge badge-published">Standard Operating Procedure</span>
+    </div>
+    <p class="text-muted text-sm" style="margin-bottom: 16px;">
+      Follow these operational steps to configure new academic sessions and student cohorts:
+    </p>
+    <div class="features-grid" style="margin-top: 0;">
+      <div class="feature-card" style="box-shadow: none;">
+        <span class="section-label">Step 1: Users</span>
+        <h3>Provision Accounts</h3>
+        <p class="text-muted text-sm">Create faculty instructor and student accounts with departmental assignments.</p>
+        <div style="margin-top: 12px;">
+          <a class="btn btn-outline btn-sm" href="{{ url_for('admin_users') }}">Add Users</a>
+        </div>
+      </div>
+      <div class="feature-card" style="box-shadow: none;">
+        <span class="section-label">Step 2: Courses</span>
+        <h3>Register Courses</h3>
+        <p class="text-muted text-sm">Define course codes, semesters, sections, and assign responsible faculty.</p>
+        <div style="margin-top: 12px;">
+          <a class="btn btn-outline btn-sm" href="{{ url_for('admin_courses') }}">Add Courses</a>
+        </div>
+      </div>
+      <div class="feature-card" style="box-shadow: none;">
+        <span class="section-label">Step 3: Enrolments</span>
+        <h3>Map Students</h3>
+        <p class="text-muted text-sm">Enrol registered students into their relevant courses and sections.</p>
+        <div style="margin-top: 12px;">
+          <a class="btn btn-outline btn-sm" href="{{ url_for('admin_enrolments') }}">Enrol Students</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2col">
+    <!-- Recent Courses -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Recent Courses</h3>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('admin_courses') }}">View All</a>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Course Name</th>
+              <th>Faculty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in recent_courses %}
+              <tr>
+                <td><strong>{{ c.course_code }}</strong></td>
+                <td>{{ c.course_name }}</td>
+                <td>{{ c.faculty.full_name if c.faculty else 'Unassigned' }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-muted">No courses registered yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Users -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Recent Registered Users</h3>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('admin_users') }}">View All</a>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Department</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in recent_users %}
+              <tr>
+                <td><strong>{{ u.full_name }}</strong></td>
+                <td>
+                  {% if u.role == 'admin' %}
+                    <span class="badge badge-published">Admin</span>
+                  {% elif u.role == 'faculty' %}
+                    <span class="badge badge-submitted">Faculty</span>
+                  {% else %}
+                    <span class="badge badge-pending">Student</span>
+                  {% endif %}
+                </td>
+                <td>{{ u.department or 'General' }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-muted">No users registered yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% elif role == 'faculty' %}
+  <!-- FACULTY DASHBOARD -->
+  <div class="page-header">
+    <div>
+      <span class="section-label">Faculty Workspace</span>
+      <h1>Academic Dashboard</h1>
+      <p class="text-muted text-sm">Instructor: {{ current_user.full_name }} &middot; {{ current_user.department or 'Faculty Member' }}</p>
+    </div>
+    <div class="page-header-actions">
+      <a class="btn btn-primary" href="{{ url_for('task_new') }}">Create Academic Task</a>
+      <a class="btn btn-secondary" href="{{ url_for('notice_new') }}">Post Notice</a>
+      <a class="btn btn-outline" href="{{ url_for('progress') }}">View Progress Matrix</a>
+    </div>
+  </div>
+
+  <!-- Academic Progress Indicators (Table VIII) -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Total Tasks</span>
+      <span class="stat-value">{{ total_tasks }}</span>
+      <span class="stat-desc">Assignments, projects, practicals</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Submissions</span>
+      <span class="stat-value">{{ total_submitted }}</span>
+      <span class="stat-desc">{{ total_reviewed }} evaluated by you</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Pending</span>
+      <span class="stat-value">{{ total_pending }}</span>
+      <span class="stat-desc">Awaiting student submission</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Overdue</span>
+      <span class="stat-value">{{ total_overdue }}</span>
+      <span class="stat-desc">Past deadline with no submission</span>
+    </div>
+  </section>
+
+  <!-- Faculty Submission Completion Rate Bar -->
+  <div class="panel" style="padding: 16px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-weight: 700; font-size: 13px;">Aggregate Student Submission Completion Rate</span>
+      <span style="font-weight: 800; color: var(--color-primary); font-size: 15px;">{{ submission_rate }}%</span>
+    </div>
+    <div class="progress-bar-bg" style="height: 10px;">
+      <div class="progress-bar-fill" style="width: {{ submission_rate }}%;"></div>
+    </div>
+  </div>
+
+  <!-- Per-Course Summary (Table VIII, Section IX-C) -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>Course-wise Progress Summary</h3>
+        <p class="text-muted text-sm" style="margin: 4px 0 0;">Overview of active subjects under your instruction.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('progress') }}">Detailed Analytics</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Section</th>
+            <th>Enrolled</th>
+            <th>Tasks</th>
+            <th>Submitted</th>
+            <th>Pending</th>
+            <th>Overdue</th>
+            <th>Reviewed</th>
+            <th>Completion</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cs in course_summaries %}
+            <tr>
+              <td>
+                <a href="{{ url_for('progress', course_id=cs.course.course_id) }}">
+                  <strong>{{ cs.course.course_code }}</strong> &middot; {{ cs.course.course_name }}
+                </a>
+              </td>
+              <td>{{ cs.course.section or '-' }}</td>
+              <td>{{ cs.enrolled_count }}</td>
+              <td>{{ cs.tasks_count }}</td>
+              <td><strong>{{ cs.submitted }}</strong></td>
+              <td>{{ cs.pending }}</td>
+              <td>
+                {% if cs.overdue > 0 %}
+                  <span class="badge badge-overdue">{{ cs.overdue }}</span>
+                {% else %}
+                  0
+                {% endif %}
+              </td>
+              <td>{{ cs.reviewed }}</td>
+              <td>
+                <div class="progress-container">
+                  <div class="progress-bar-bg" style="width: 70px;">
+                    <div class="progress-bar-fill" style="width: {{ cs.submission_rate }}%;"></div>
+                  </div>
+                  <span>{{ cs.submission_rate }}%</span>
+                </div>
+              </td>
+              <td class="nowrap">
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('progress', course_id=cs.course.course_id) }}">Inspect</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="10" class="text-muted">No courses assigned to your account. Please contact the administrator.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Academic Tasks -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>Recent Tasks</h3>
+        <p class="text-muted text-sm" style="margin: 4px 0 0;">Latest coursework published for your subjects.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('tasks_list') }}">View All Tasks</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Deadline</th>
+            <th>Submissions</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tasks %}
+            <tr>
+              <td>
+                <a href="{{ url_for('task_detail', task_id=t.task_id) }}">
+                  <strong>{{ t.title }}</strong>
+                </a>
+              </td>
+              <td>{{ t.course.course_code }}</td>
+              <td><span class="badge badge-published">{{ t.task_type }}</span></td>
+              <td class="nowrap">{{ t.deadline.strftime('%d %b %Y, %I:%M %p') }}</td>
+              <td class="nowrap">
+                <strong>{{ t.submissions|length }}</strong> received
+              </td>
+              <td>
+                {% if t.status == 'Published' %}
+                  <span class="badge badge-published">Published</span>
+                {% elif t.status == 'Draft' %}
+                  <span class="badge badge-draft">Draft</span>
+                {% elif t.status == 'Closed' %}
+                  <span class="badge badge-closed">Closed</span>
+                {% else %}
+                  <span class="badge badge-archived">{{ t.status }}</span>
+                {% endif %}
+              </td>
+              <td class="nowrap">
+                <a class="btn btn-outline btn-sm" href="{{ url_for('task_detail', task_id=t.task_id) }}">Submissions</a>
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('task_edit', task_id=t.task_id) }}">Edit</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-muted">No academic tasks created yet. Click "Create Academic Task" to get started.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% else %}
+  <!-- STUDENT DASHBOARD -->
+  <div class="page-header">
+    <div>
+      <span class="section-label">Student Workspace</span>
+      <h1>Hello, {{ (current_user.full_name or current_user.name or 'Student').split(' ')[0] }}.</h1>
+      <p class="text-muted text-sm">Enrolled in {{ enrolments|length }} course(s) &middot; {{ current_user.department or 'Student' }}</p>
+    </div>
+    <div class="page-header-actions">
+      <a class="btn btn-outline btn-sm" href="{{ url_for('tasks_list') }}">View All Tasks</a>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('telegram_page') }}">Notification Settings</a>
+    </div>
+  </div>
+
+  <!-- Academic Progress Indicators (Table VIII) -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Total Assigned</span>
+      <span class="stat-value">{{ total_assigned }}</span>
+      <span class="stat-desc">Coursework across enrolled subjects</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Submitted</span>
+      <span class="stat-value">{{ submitted_count }}</span>
+      <span class="stat-desc">{{ reviewed_count }} reviewed by faculty</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Pending</span>
+      <span class="stat-value">{{ pending_count }}</span>
+      <span class="stat-desc">Awaiting your submission</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Overdue</span>
+      <span class="stat-value">{{ overdue_count }}</span>
+      <span class="stat-desc">Deadline passed without submission</span>
+    </div>
+  </section>
+
+  <!-- Submission Rate Bar -->
+  <div class="panel" style="padding: 16px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-weight: 700; font-size: 13px;">Overall Submission Completion Rate</span>
+      <span style="font-weight: 800; color: var(--color-primary); font-size: 15px;">{{ submission_rate }}%</span>
+    </div>
+    <div class="progress-bar-bg" style="height: 10px;">
+      <div class="progress-bar-fill" style="width: {{ submission_rate }}%;"></div>
+    </div>
+  </div>
+
+  <!-- Assigned Academic Tasks -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>Assigned Academic Work</h3>
+        <p class="text-muted text-sm" style="margin: 4px 0 0;">Current coursework, lab practicals, and project milestones.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('tasks_list') }}">Filter Tasks</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Task Title</th>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t, st in task_rows %}
+            <tr>
+              <td>
+                <a href="{{ url_for('task_detail', task_id=t.task_id) }}">
+                  <strong>{{ t.title }}</strong>
+                </a>
+              </td>
+              <td>{{ t.course.course_code }}</td>
+              <td><span class="badge badge-published">{{ t.task_type }}</span></td>
+              <td class="nowrap">{{ t.deadline.strftime('%d %b %Y, %I:%M %p') }}</td>
+              <td>
+                {% if st == 'Submitted' %}
+                  <span class="badge badge-submitted">Submitted</span>
+                {% elif st == 'Reviewed' %}
+                  <span class="badge badge-reviewed">Reviewed</span>
+                {% elif st == 'Resubmission Required' %}
+                  <span class="badge badge-resubmit">Resubmission Req.</span>
+                {% elif st == 'Overdue' %}
+                  <span class="badge badge-overdue">Overdue</span>
+                {% else %}
+                  <span class="badge badge-pending">Pending</span>
+                {% endif %}
+              </td>
+              <td class="nowrap">
+                <a class="btn btn-primary btn-sm" href="{{ url_for('task_detail', task_id=t.task_id) }}">
+                  {% if st in ['Submitted', 'Reviewed'] %}
+                    View Submission
+                  {% elif st == 'Resubmission Required' %}
+                    Revise Work
+                  {% elif t.status == 'Closed' %}
+                    View Task
+                  {% else %}
+                    Submit Work
+                  {% endif %}
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-muted">
+                {% if enrolments|length == 0 %}
+                  You are not yet enrolled in any courses. Please contact your faculty or administrator.
+                {% else %}
+                  No pending academic tasks for your enrolled courses.
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Departmental Notices -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>Recent Departmental Notices</h3>
+        <p class="text-muted text-sm" style="margin: 4px 0 0;">Circulars and announcements targeted to your enrolled courses.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('notices_list') }}">Notice Board</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Posted By</th>
+            <th>Published</th>
+            <th>Audience</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in notices %}
+            <tr>
+              <td>
+                <strong>{{ n.title }}</strong>
+                <p class="text-sm text-muted" style="margin: 4px 0 0;">{{ n.body[:140] }}{% if n.body|length > 140 %}...{% endif %}</p>
+              </td>
+              <td class="nowrap">
+                {{ n.author.full_name if n.author else 'Department' }}
+              </td>
+              <td class="nowrap">{{ n.publish_date.strftime('%d %b %Y') }}</td>
+              <td>
+                {% if n.audience == 'all' %}
+                  <span class="badge badge-published">All Students</span>
+                {% else %}
+                  <span class="badge badge-draft">Course Specific</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-muted">No notices posted recently.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

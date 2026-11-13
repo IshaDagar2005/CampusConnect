@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Course Enrolments - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="section-label">Administration</span>
+    <h1>Course Enrolments</h1>
+  </div>
+  <div class="page-header-actions">
+    <a class="btn btn-outline" href="{{ url_for('dashboard') }}">Return to Dashboard</a>
+  </div>
+</div>
+
+<div class="grid-2col">
+  <!-- Enrol Student Form -->
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Enrol Student</h3>
+    </div>
+    <form method="post" action="{{ url_for('admin_enrolments') }}">
+      <div class="form-group">
+        <label class="form-label" for="student_id">Student</label>
+        <select class="form-select" id="student_id" name="student_id" required>
+          <option value="">Select a student...</option>
+          {% for s in students %}
+            <option value="{{ s.user_id }}">{{ s.full_name }} ({{ s.email }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="course_id">Course</label>
+        <select class="form-select" id="course_id" name="course_id" required>
+          <option value="">Select a course...</option>
+          {% for c in courses %}
+            <option value="{{ c.course_id }}">{{ c.course_code }} - {{ c.course_name }} (Sec: {{ c.section or 'Default' }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="width: 100%;">Enrol Student in Course</button>
+    </form>
+  </div>
+
+  <!-- Current Enrolments Table -->
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Active Enrolments ({{ enrolments|length }})</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Course</th>
+            <th>Enrolled Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in enrolments %}
+            <tr>
+              <td>
+                <strong>{{ e.student.full_name }}</strong>
+                <div class="text-sm text-muted">{{ e.student.email }}</div>
+              </td>
+              <td>
+                <strong>{{ e.course.course_code }}</strong>
+                <div class="text-sm text-muted">{{ e.course.course_name }} (Sec: {{ e.course.section or '-' }})</div>
+              </td>
+              <td class="nowrap text-sm text-muted">
+                {{ e.joined_at.strftime('%d %b %Y') }}
+              </td>
+              <td class="nowrap">
+                <form method="post" action="{{ url_for('admin_enrolment_delete', enrolment_id=e.enrolment_id) }}" style="display: inline;" data-confirm="Remove this student enrolment?">
+                  <button class="btn btn-danger-outline btn-sm" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-muted">No student enrolments registered yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

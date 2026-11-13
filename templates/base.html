@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CampusConnect - Academic Progress and Communication Portal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <a class="brand" href="{{ url_for('home') }}">
+        Campus<span>Connect</span>
+      </a>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav-menu" id="navMenu">
+        {% if current_user.is_authenticated %}
+          <span class="user-tag">{{ current_user.role }}</span>
+          <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+          <a class="nav-link" href="{{ url_for('tasks_list') }}">Tasks</a>
+          <a class="nav-link" href="{{ url_for('notices_list') }}">Notices</a>
+
+          {% if current_user.role in ['faculty', 'admin'] %}
+            <a class="nav-link" href="{{ url_for('task_new') }}">Create Task</a>
+            <a class="nav-link" href="{{ url_for('notice_new') }}">Post Notice</a>
+            <a class="nav-link" href="{{ url_for('progress') }}">Progress</a>
+          {% endif %}
+
+          {% if current_user.role == 'admin' %}
+            <a class="nav-link" href="{{ url_for('admin_users') }}">Users</a>
+            <a class="nav-link" href="{{ url_for('admin_courses') }}">Courses</a>
+            <a class="nav-link" href="{{ url_for('admin_enrolments') }}">Enrolments</a>
+          {% endif %}
+
+          <a class="nav-link" href="{{ url_for('telegram_page') }}">Telegram</a>
+          <a class="nav-link" href="{{ url_for('logout') }}">Sign Out</a>
+        {% else %}
+          <a class="nav-link" href="{{ url_for('login') }}">Sign In</a>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('register') }}">Student Registration</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <div class="footer-text">
+      CampusConnect - Academic Progress and Communication Portal &middot; VIPS-TC / GGSIPU
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
