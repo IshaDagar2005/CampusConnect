@@ -34,6 +34,20 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+database_url = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///" + os.path.join(BASE_DIR, "campusconnect.db")
+)
+
+engine_options = {}
+
+if database_url.startswith("mysql+pymysql://"):
+    engine_options["connect_args"] = {
+        "ssl": {
+            "ca": "/etc/ssl/certs/ca-certificates.crt"
+        }
+    }
+
 app = Flask(__name__)
 
 # Render (and other hosts) should provide DATABASE_URL for the hosted database.
@@ -47,6 +61,7 @@ if database_url.startswith("mysql://"):
 app.config.update(
     SECRET_KEY=os.getenv("SECRET_KEY", "campusconnect-development-secret-key-2026"),
     SQLALCHEMY_DATABASE_URI=database_url,
+    SQLALCHEMY_ENGINE_OPTIONS=engine_options,
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     UPLOAD_FOLDER=UPLOAD_FOLDER,
     MAX_CONTENT_LENGTH=int(os.getenv("MAX_CONTENT_LENGTH", 12 * 1024 * 1024)),
