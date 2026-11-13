@@ -81,6 +81,14 @@
         <div class="form-help" style="margin-top: 6px;">
           Code expires at {{ code.expires_at.strftime('%I:%M %p UTC') }} (single-use token).
         </div>
+
+        <div style="margin-top: 18px;">
+          <span class="section-label">Step 4: After Sending the Code to the Bot</span>
+          <p class="text-muted text-sm" style="margin: 6px 0 12px;">After you have sent <code>/link {{ code.code }}</code> to the bot in Telegram, click the button below to complete the linking.</p>
+          <form method="post" action="{{ url_for('telegram_poll') }}">
+            <button class="btn btn-primary" type="submit">Check for Linking Requests</button>
+          </form>
+        </div>
       </div>
     {% endif %}
 

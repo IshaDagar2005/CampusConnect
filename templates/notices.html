@@ -43,6 +43,8 @@
             <td>
               {% if n.audience == 'all' %}
                 <span class="badge badge-published">All Students</span>
+              {% elif n.audience.startswith('student:') %}
+                <span class="badge badge-pending">Direct Message</span>
               {% else %}
                 <span class="badge badge-draft">Course Enrolled</span>
               {% endif %}

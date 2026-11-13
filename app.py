@@ -352,6 +352,15 @@ def notify_notice_published(notice):
         students = User.query.filter_by(role="student").all()
         for s in students:
             send_telegram(s, text)
+    elif notice.audience.startswith("student:"):
+        # Direct message to a single student
+        try:
+            sid = int(notice.audience.split(":", 1)[1])
+            student = db.session.get(User, sid)
+            if student:
+                send_telegram(student, text)
+        except (ValueError, TypeError):
+            pass
     else:
         try:
             cid = int(notice.audience)
@@ -590,9 +599,12 @@ def dashboard():
     submission_rate = round((submitted_count / total_assigned * 100), 1) if total_assigned > 0 else 0
 
     # Targeted Notices (Section VI-B.4, TC7)
+    student_audience_tag = f"student:{current_user.user_id}"
     notices = (
         Notice.query.filter(
-            (Notice.audience == "all") | (Notice.audience.in_([str(cid) for cid in course_ids]))
+            (Notice.audience == "all")
+            | (Notice.audience.in_([str(cid) for cid in course_ids]))
+            | (Notice.audience == student_audience_tag)
         )
         .order_by(Notice.publish_date.desc())
         .limit(5)
@@ -969,8 +981,13 @@ def notices_list():
     if current_user.role == "student":
         enrolments = Enrolment.query.filter_by(student_id=current_user.user_id).all()
         c_ids = [str(e.course_id) for e in enrolments]
+        student_audience = f"student:{current_user.user_id}"
         notices = (
-            Notice.query.filter((Notice.audience == "all") | (Notice.audience.in_(c_ids)))
+            Notice.query.filter(
+                (Notice.audience == "all")
+                | (Notice.audience.in_(c_ids))
+                | (Notice.audience == student_audience)
+            )
             .order_by(Notice.publish_date.desc())
             .all()
         )
@@ -988,6 +1005,20 @@ def notice_new():
     else:
         courses = Course.query.all()
 
+    # Gather students that this faculty/admin can message directly
+    if current_user.role == "faculty":
+        course_ids = [c.course_id for c in courses]
+        enrolled_student_ids = (
+            db.session.query(Enrolment.student_id)
+            .filter(Enrolment.course_id.in_(course_ids))
+            .distinct()
+            .all()
+        ) if course_ids else []
+        student_ids = [sid for (sid,) in enrolled_student_ids]
+        students = User.query.filter(User.user_id.in_(student_ids)).order_by(User.full_name.asc()).all() if student_ids else []
+    else:
+        students = User.query.filter_by(role="student").order_by(User.full_name.asc()).all()
+
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         body = request.form.get("body", "").strip()
@@ -995,7 +1026,7 @@ def notice_new():
 
         if not title or not body:
             flash("Title and body are required.", "error")
-            return render_template("notice_new.html", courses=courses)
+            return render_template("notice_new.html", courses=courses, students=students)
 
         notice = Notice(
             created_by=current_user.user_id,
@@ -1011,7 +1042,7 @@ def notice_new():
         flash("Notice published successfully.", "success")
         return redirect(url_for("notices_list"))
 
-    return render_template("notice_new.html", courses=courses)
+    return render_template("notice_new.html", courses=courses, students=students)
 
 
 @app.route("/notices/<int:notice_id>/delete", methods=["POST"])
@@ -1190,22 +1221,17 @@ def telegram_unlink():
     return redirect(url_for("telegram_page"))
 
 
-@app.route("/telegram/webhook", methods=["POST"])
-def telegram_webhook():
-    """Processes bot updates via Telegram webhook."""
-    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
-    if secret:
-        hdr = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-        if hdr != secret:
-            abort(403)
+def process_telegram_update(data):
+    """Core logic shared by webhook and polling: processes a single Telegram update dict.
 
-    data = request.get_json(silent=True) or {}
+    Returns a reply string (or None) and a bool indicating success.
+    """
     message = data.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     text = (message.get("text") or "").strip()
 
     if not chat_id or not text:
-        return jsonify({"ok": True})
+        return None
 
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 
@@ -1217,7 +1243,7 @@ def telegram_webhook():
                     json={"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
                     timeout=8,
                 )
-            except requests.RequestException:
+            except Exception:
                 pass
 
     if text.startswith("/start"):
@@ -1226,20 +1252,20 @@ def telegram_webhook():
             "To link your account, generate a one-time code on the portal (under the Telegram page) and send:\n"
             "<code>/link YOUR_CODE</code>"
         )
-        return jsonify({"ok": True})
+        return "start"
 
     if text.startswith("/link"):
         parts = text.split(maxsplit=1)
         if len(parts) < 2:
             reply("Please provide your code. Example: <code>/link abc123xyz</code>")
-            return jsonify({"ok": True})
+            return "link_no_code"
 
         code_val = parts[1].strip()
         code_record = TelegramCode.query.filter_by(code=code_val, used=False).first()
 
         if not code_record or code_record.expires_at < datetime.utcnow():
             reply("This code is invalid or has expired. Please generate a new code in CampusConnect.")
-            return jsonify({"ok": True})
+            return "link_expired"
 
         # Link chat ID to authenticated user
         link = TelegramLink.query.filter_by(user_id=code_record.user_id).first()
@@ -1259,15 +1285,91 @@ def telegram_webhook():
         code_record.used = True
         db.session.commit()
 
-        user = User.query.get(code_record.user_id)
+        user = db.session.get(User, code_record.user_id)
         reply(
             f"Success! Your Telegram account has been linked to {user.full_name} ({user.email}). "
             f"You will now receive notifications for new tasks, deadlines, and announcements."
         )
-        return jsonify({"ok": True})
+        return "linked"
 
     reply("Unrecognized command. Use /start for instructions or /link <code> to connect your account.")
+    return "unknown"
+
+
+@app.route("/telegram/webhook", methods=["POST"])
+def telegram_webhook():
+    """Processes bot updates via Telegram webhook."""
+    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+    if secret:
+        hdr = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if hdr != secret:
+            abort(403)
+
+    data = request.get_json(silent=True) or {}
+    process_telegram_update(data)
     return jsonify({"ok": True})
+
+
+@app.route("/telegram/poll", methods=["POST"])
+@login_required
+def telegram_poll():
+    """Fetches pending updates from Telegram via getUpdates (for local development).
+
+    This replaces the need for a publicly accessible webhook URL.
+    Users generate a code on the portal, send /link <code> to the bot in Telegram,
+    then click 'Check for Linking Requests' on this page to pull and process those messages.
+    """
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if not bot_token:
+        flash("Telegram bot token is not configured.", "error")
+        return redirect(url_for("telegram_page"))
+
+    try:
+        res = requests.get(
+            f"https://api.telegram.org/bot{bot_token}/getUpdates",
+            params={"timeout": 2},
+            timeout=10,
+        )
+        result = res.json()
+    except Exception:
+        flash("Could not reach the Telegram API. Please check your internet connection.", "error")
+        return redirect(url_for("telegram_page"))
+
+    if not result.get("ok"):
+        flash("Telegram API returned an error. Verify the bot token.", "error")
+        return redirect(url_for("telegram_page"))
+
+    updates = result.get("result", [])
+    processed = 0
+    linked = 0
+    last_update_id = None
+
+    for update in updates:
+        last_update_id = update.get("update_id")
+        outcome = process_telegram_update(update)
+        if outcome:
+            processed += 1
+        if outcome == "linked":
+            linked += 1
+
+    # Acknowledge processed updates so they are not returned again
+    if last_update_id is not None:
+        try:
+            requests.get(
+                f"https://api.telegram.org/bot{bot_token}/getUpdates",
+                params={"offset": last_update_id + 1, "timeout": 1},
+                timeout=10,
+            )
+        except Exception:
+            pass
+
+    if linked > 0:
+        flash(f"Telegram account linked successfully. Processed {processed} message(s).", "success")
+    elif processed > 0:
+        flash(f"Processed {processed} pending Telegram message(s). No new linking requests found.", "info")
+    else:
+        flash("No pending Telegram messages found. Make sure you sent /link <code> to the bot first.", "info")
+    return redirect(url_for("telegram_page"))
 
 
 @app.route("/telegram/reminders", methods=["POST", "GET"])

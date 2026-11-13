@@ -14,6 +14,7 @@ os.environ["SECRET_KEY"] = "test-secret-key-12345"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["FLASK_DEBUG"] = "0"
 os.environ["TELEGRAM_BOT_TOKEN"] = "mock_telegram_token"
+os.environ["TELEGRAM_WEBHOOK_SECRET"] = ""
 
 from app import app, db, User, Course, Enrolment, Task, Submission, Notice, TelegramLink, TelegramCode, send_telegram
 

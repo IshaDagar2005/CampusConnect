@@ -17,6 +17,7 @@ os.environ["SECRET_KEY"] = "verification-test-secret-key-2026"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["FLASK_DEBUG"] = "0"
 os.environ["TELEGRAM_BOT_TOKEN"] = "mock_test_bot_token"
+os.environ["TELEGRAM_WEBHOOK_SECRET"] = ""
 
 from app import (
     app,
