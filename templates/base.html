@@ -7,10 +7,26 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <div class="top-academic-bar">
+    <div class="top-academic-container">
+      <div class="top-academic-college">
+        Vivekananda Institute of Professional Studies - Technical Campus (VIPS-TC)
+      </div>
+      <div class="top-academic-student">
+        <span><strong>Name:</strong> Isha Dagar</span>
+        <span class="meta-dot">&middot;</span>
+        <span><strong>Roll. No.:</strong> 09617704426</span>
+        <span class="meta-dot">&middot;</span>
+        <span class="top-academic-pill">Program: MCA-1B</span>
+      </div>
+    </div>
+  </div>
+
   <header>
     <div class="header-container">
       <a class="brand" href="{{ url_for('home') }}">
-        Campus<span>Connect</span>
+        <img class="brand-logo" src="{{ url_for('static', filename='logo-9618729b.webp') }}" alt="VIPS-TC Logo">
+        <span>Campus<span>Connect</span></span>
       </a>
 
       <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
@@ -65,8 +81,13 @@
   </main>
 
   <footer>
-    <div class="footer-text">
-      CampusConnect - Academic Progress and Communication Portal &middot; VIPS-TC / GGSIPU
+    <div class="footer-container">
+      <div class="footer-text">
+        CampusConnect - Academic Progress and Communication Portal &middot; VIPS-TC / GGSIPU
+      </div>
+      <div class="footer-author-strip">
+        Name: <strong>Isha Dagar</strong> &middot; Roll. No.: <strong>09617704426</strong> &middot; Program: <strong>MCA-1B</strong> &middot; Mentor: <strong>Dr. Cosmena</strong>
+      </div>
     </div>
   </footer>
 
