@@ -695,9 +695,13 @@ def tasks_list():
 @roles("faculty", "admin")
 def task_new():
     if current_user.role == "faculty":
-        available_courses = Course.query.filter_by(faculty_id=current_user.user_id).all()
+        available_courses = (
+            Course.query.filter_by(faculty_id=current_user.user_id)
+            .order_by(Course.course_code.asc(), Course.section.asc())
+            .all()
+        )
     else:
-        available_courses = Course.query.all()
+        available_courses = Course.query.order_by(Course.course_code.asc(), Course.section.asc()).all()
 
     if request.method == "POST":
         course_id = request.form.get("course_id", type=int)
@@ -1001,9 +1005,13 @@ def notices_list():
 @roles("faculty", "admin")
 def notice_new():
     if current_user.role == "faculty":
-        courses = Course.query.filter_by(faculty_id=current_user.user_id).all()
+        courses = (
+            Course.query.filter_by(faculty_id=current_user.user_id)
+            .order_by(Course.course_code.asc(), Course.section.asc())
+            .all()
+        )
     else:
-        courses = Course.query.all()
+        courses = Course.query.order_by(Course.course_code.asc(), Course.section.asc()).all()
 
     # Gather students that this faculty/admin can message directly
     if current_user.role == "faculty":
@@ -1067,9 +1075,13 @@ def notice_delete(notice_id):
 def progress():
     """Detailed Course-wise Progress and Student Tracking Matrix."""
     if current_user.role == "faculty":
-        courses = Course.query.filter_by(faculty_id=current_user.user_id).all()
+        courses = (
+            Course.query.filter_by(faculty_id=current_user.user_id)
+            .order_by(Course.course_code.asc(), Course.section.asc())
+            .all()
+        )
     else:
-        courses = Course.query.all()
+        courses = Course.query.order_by(Course.course_code.asc(), Course.section.asc()).all()
 
     selected_course_id = request.args.get("course_id", type=int)
     selected_course = None
@@ -1495,7 +1507,7 @@ def admin_courses():
         flash(f"Course {course_code} created successfully.", "success")
         return redirect(url_for("admin_courses"))
 
-    courses = Course.query.order_by(Course.course_code.asc()).all()
+    courses = Course.query.order_by(Course.course_code.asc(), Course.section.asc()).all()
     faculty_list = User.query.filter_by(role="faculty").order_by(User.full_name.asc()).all()
     return render_template("courses.html", courses=courses, faculty=faculty_list)
 
@@ -1538,7 +1550,7 @@ def admin_enrolments():
         return redirect(url_for("admin_enrolments"))
 
     students = User.query.filter_by(role="student").order_by(User.full_name.asc()).all()
-    courses = Course.query.order_by(Course.course_code.asc()).all()
+    courses = Course.query.order_by(Course.course_code.asc(), Course.section.asc()).all()
     enrolments = Enrolment.query.order_by(Enrolment.enrolment_id.desc()).all()
     return render_template(
         "enrolments.html",
@@ -1613,56 +1625,139 @@ def init_db():
             db.session.add(admin_user)
             db.session.commit()
 
-        # Seed baseline faculty and sample courses if none exist
-        if Course.query.count() == 0:
-            faculty = User.query.filter_by(role="faculty").first()
-            if not faculty:
-                faculty = User(
-                    full_name="Dr. Cosmena",
-                    email="cosmena@vips.edu",
-                    role="faculty",
-                    department="Computer Applications",
-                )
-                faculty.set_password("FacultyPass123")
-                db.session.add(faculty)
+        # Upgrade legacy placeholder courses if the database still contains
+        # only the initial demo subjects and zero student submissions.
+        placeholder_names = {
+            "Advanced Java Programming",
+            "Web Technologies & Frameworks",
+            "Software Engineering & Design",
+        }
+        existing_courses = Course.query.all()
+        if existing_courses and all(c.course_name in placeholder_names for c in existing_courses):
+            has_submissions = (
+                db.session.query(Submission.submission_id)
+                .join(Task, Submission.task_id == Task.task_id)
+                .filter(Task.course_id.in_([c.course_id for c in existing_courses]))
+                .first()
+                is not None
+            )
+            if not has_submissions:
+                for old_course in existing_courses:
+                    db.session.delete(old_course)
                 db.session.commit()
 
-            c1 = Course(
-                course_name="Advanced Java Programming",
-                course_code="MCA-101",
-                semester="1",
-                section="B",
-                academic_year="2026-2027",
-                faculty_id=faculty.user_id,
-            )
-            c2 = Course(
-                course_name="Web Technologies & Frameworks",
-                course_code="MCA-103",
-                semester="1",
-                section="B",
-                academic_year="2026-2027",
-                faculty_id=faculty.user_id,
-            )
-            c3 = Course(
-                course_name="Software Engineering & Design",
-                course_code="MCA-105",
-                semester="1",
-                section="B",
-                academic_year="2026-2027",
-                faculty_id=faculty.user_id,
-            )
-            db.session.add_all([c1, c2, c3])
+        # Seed MCA Semester 1 faculty and official courses if none exist
+        if Course.query.count() == 0:
+            faculty_data = [
+                ("Dr. Cosmena", "cosmena@vips.edu"),
+                ("Dr. Kanta Malik", "kanta.malik@vips.edu"),
+                ("Prof. Rajan", "rajan@vips.edu"),
+                ("Dr. Dimple", "dimple@vips.edu"),
+                ("Prof. Deepali", "deepali@vips.edu"),
+                ("Dr. Nivedita", "nivedita@vips.edu"),
+                ("Prof. Mamta", "mamta@vips.edu"),
+                ("Ms. Nishtha", "nishtha@vips.edu"),
+                ("Dr. Dheeraj", "dheeraj@vips.edu"),
+                ("Ms. Meenakshi", "meenakshi@vips.edu"),
+                ("Dr. Alpna", "alpna@vips.edu"),
+                ("Dr. Neha Goel", "neha.goel@vips.edu"),
+                ("Dr. Chhaya", "chhaya@vips.edu"),
+            ]
+            faculty_map = {}
+            for name, email in faculty_data:
+                user = User.query.filter_by(email=email).first()
+                if not user:
+                    user = User(
+                        full_name=name,
+                        email=email,
+                        role="faculty",
+                        department="Computer Applications",
+                    )
+                    user.set_password("FacultyPass123")
+                    db.session.add(user)
+                faculty_map[name] = user
             db.session.commit()
 
-            # Seed sample published task
+            # MCA First Semester syllabus and section-wise faculty (Sections A, B, C)
+            sections = ("A", "B", "C")
+            theory_and_project_courses = [
+                ("MCA-101", "Discrete Structures", {
+                    "A": "Dr. Kanta Malik",
+                    "B": "Dr. Kanta Malik",
+                    "C": "Dr. Kanta Malik",
+                }),
+                ("MCA-103", "Computer Networks", {
+                    "A": "Prof. Rajan",
+                    "B": "Prof. Rajan",
+                    "C": "Dr. Dimple",
+                }),
+                ("MCA-105", "Operating Systems with Linux", {
+                    "A": "Prof. Deepali",
+                    "B": "Prof. Deepali",
+                    "C": "Dr. Nivedita",
+                }),
+                ("MCA-107", "Database Management Systems", {
+                    "A": "Prof. Mamta",
+                    "B": "Dr. Dheeraj",
+                    "C": "Dr. Dheeraj",
+                }),
+                ("MCA-109", "Object Oriented Programming and JAVA", {
+                    "A": "Ms. Meenakshi",
+                    "B": "Dr. Alpna",
+                    "C": "Dr. Alpna",
+                }),
+                ("MCA-169", "Minor Project - I", {
+                    "A": "Dr. Neha Goel",
+                    "B": "Dr. Cosmena",
+                    "C": "Dr. Dimple",
+                }),
+                ("MCA-171", "Professional Proficiency - I", {
+                    "A": "Dr. Nivedita",
+                    "B": "Dr. Chhaya",
+                    "C": "Dr. Dheeraj",
+                }),
+            ]
+
+            theory_faculty_by_code = {
+                code: sec_map for code, _, sec_map in theory_and_project_courses
+            }
+            # Lab courses inherit the theory faculty for their respective section
+            lab_courses = [
+                ("MCA-161", "Computer Networks Lab", theory_faculty_by_code["MCA-103"]),
+                ("MCA-163", "Operating Systems with Linux Lab", theory_faculty_by_code["MCA-105"]),
+                ("MCA-165", "Database Management Systems Lab", theory_faculty_by_code["MCA-107"]),
+                ("MCA-167", "Object Oriented Programming and JAVA Lab", theory_faculty_by_code["MCA-109"]),
+            ]
+
+            course_objs = []
+            for code, name, sec_map in theory_and_project_courses + lab_courses:
+                for sec in sections:
+                    course_objs.append(
+                        Course(
+                            course_name=name,
+                            course_code=code,
+                            semester="1",
+                            section=sec,
+                            academic_year="2026-2027",
+                            faculty_id=faculty_map[sec_map[sec]].user_id,
+                        )
+                    )
+            db.session.add_all(course_objs)
+            db.session.commit()
+
+            # Seed sample published task (DBMS Section B assignment)
+            dbms_b = next(
+                c for c in course_objs if c.course_code == "MCA-107" and c.section == "B"
+            )
             sample_task = Task(
-                course_id=c1.course_id,
-                faculty_id=faculty.user_id,
-                title="Practical Assignment 1: Thread Synchronization in Java",
+                course_id=dbms_b.course_id,
+                faculty_id=dbms_b.faculty_id,
+                title="Practical Assignment 1: ER Diagram and Normalization",
                 task_type="Assignment",
                 description=(
-                    "Implement a producer-consumer solution using Java multithreading and wait/notify synchronization. "
-                    "Submit your source code and execution output report in a single PDF or ZIP archive."
+                    "Design an ER diagram for a university library management system. "
+                    "Normalize the resulting relations up to 3NF. Submit your diagrams "
+                    "and normalization steps in a single PDF."
                 ),
                 issue_date=datetime.utcnow() - timedelta(days=2),
                 deadline=datetime.utcnow() + timedelta(days=5),
@@ -1670,18 +1765,19 @@ def init_db():
             )
             db.session.add(sample_task)
 
-            # Seed sample notice
-            notice = Notice(
-                created_by=faculty.user_id,
-                title="MCA Semester 1 Laboratory Schedule",
-                body=(
-                    "All students of MCA 1 (B) must bring their practical notebooks for verification "
-                    "during the scheduled lab hours on Monday."
-                ),
-                audience="all",
-                publish_date=datetime.utcnow(),
-            )
-            db.session.add(notice)
+            # Seed sample notice if not already present
+            if not Notice.query.filter_by(title="MCA Semester 1 Laboratory Schedule").first():
+                notice = Notice(
+                    created_by=faculty_map["Dr. Cosmena"].user_id,
+                    title="MCA Semester 1 Laboratory Schedule",
+                    body=(
+                        "All students of MCA 1 (B) must bring their practical notebooks for verification "
+                        "during the scheduled lab hours on Monday."
+                    ),
+                    audience="all",
+                    publish_date=datetime.utcnow(),
+                )
+                db.session.add(notice)
             db.session.commit()
 
 
